@@ -14,7 +14,7 @@ func TestSubscribe(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		c.TakeLoop()
+		c.DrainLoop()
 		wg.Done()
 	}()
 	c.SubscribeTopicNewTx()

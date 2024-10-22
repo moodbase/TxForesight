@@ -22,8 +22,8 @@ func New(addr string) (*Client, error) {
 	return &Client{conn}, nil
 }
 
-// TakeLoop take packets from conn
-func (c *Client) TakeLoop() {
+// DrainLoop take packets from conn
+func (c *Client) DrainLoop() {
 	for {
 		var data any
 		err := c.conn.ReadJSON(&data)
