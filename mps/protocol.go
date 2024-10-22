@@ -6,12 +6,12 @@ const (
 	FeedTypeChainConfig FeedType = iota
 	FeedTypeTransactions
 	FeedTypeBlockedTxHashes
-	FeedTypeResponse
+	FeedTypeResponse // response to client subscription requests
 )
 
 // FeedPacket 服务器向客户端推送的数据类型
 type FeedPacket struct {
-	T    FeedType `json:"type"`
+	Type FeedType `json:"type"`
 	Data any      `json:"data"`
 }
 

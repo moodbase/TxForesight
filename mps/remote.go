@@ -62,7 +62,7 @@ func (r *Remote) feed(packet FeedPacket) chan error {
 
 func (r *Remote) FeedChainConfig(config *params.ChainConfig) error {
 	return <-r.feed(FeedPacket{
-		T:    FeedTypeChainConfig,
+		Type: FeedTypeChainConfig,
 		Data: config,
 	})
 }
@@ -70,7 +70,7 @@ func (r *Remote) FeedChainConfig(config *params.ChainConfig) error {
 // FeedResponse respond to client requests
 func (r *Remote) FeedResponse(id int, ok bool, msg string) error {
 	return <-r.feed(FeedPacket{
-		T:    FeedTypeResponse,
+		Type: FeedTypeResponse,
 		Data: ResponsePacket{id, ok, msg},
 	})
 }
@@ -78,7 +78,7 @@ func (r *Remote) FeedResponse(id int, ok bool, msg string) error {
 // FeedNewTx relay new tx event to clients
 func (r *Remote) FeedNewTx(txs types.Transactions) error {
 	return <-r.feed(FeedPacket{
-		T:    FeedTypeTransactions,
+		Type: FeedTypeTransactions,
 		Data: txs,
 	})
 }
@@ -86,7 +86,7 @@ func (r *Remote) FeedNewTx(txs types.Transactions) error {
 // FeedBlockedTxHash relay new blocked tx hash to clients
 func (r *Remote) FeedBlockedTxHash(hashes []common.Hash) error {
 	return <-r.feed(FeedPacket{
-		T:    FeedTypeBlockedTxHashes,
+		Type: FeedTypeBlockedTxHashes,
 		Data: hashes,
 	})
 }
