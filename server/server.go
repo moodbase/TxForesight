@@ -77,6 +77,7 @@ func (s *Server) PacketLoop() {
 				} else {
 					fmtlog.Info("received chain config:", s.chainConfig)
 				}
+				s.pool.SetSigner(types.LatestSigner(s.chainConfig))
 			case mps.FeedTypeTransactions:
 				var txs types.Transactions
 				err := json.Unmarshal(packet.Data, &txs)
@@ -85,7 +86,12 @@ func (s *Server) PacketLoop() {
 				} else {
 					fmtlog.Info("received transactions:", txs)
 				}
-				s.pool.Feed(txs)
+				err = s.pool.Feed(txs)
+				if err != nil {
+					fmtlog.Info("feed txs error", err)
+					fmtlog.Info("retry feed txs")
+					s.feedCh <- packet
+				}
 			case mps.FeedTypeBlockedTxHashes:
 				var hashes []common.Hash
 				err := json.Unmarshal(packet.Data, &hashes)

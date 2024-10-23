@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 	"sync"
+	"time"
 )
 
 type Pool interface {
-	Feed(txs []*types.Transaction)
+	SetSigner(signer types.Signer)
+
+	Feed(txs []*types.Transaction) error
 	Block(hashes []common.Hash)
 
 	//Pend(hashes []common.Hash)
@@ -21,22 +25,44 @@ type Pool interface {
 }
 
 type TxfPool struct {
-	lock sync.RWMutex
-	all  []*types.Transaction
+	lock           sync.RWMutex
+	all            []*types.Transaction
+	signer         types.Signer
+	untilSignerSet chan struct{}
 	//pending []*types.Transaction
 	//queuing []*types.Transaction
 }
 
 func New() *TxfPool {
 	return &TxfPool{
-		all: make([]*types.Transaction, 0, 256),
+		all:            make([]*types.Transaction, 0, 256),
+		untilSignerSet: make(chan struct{}),
 	}
 }
 
-func (p *TxfPool) Feed(txs []*types.Transaction) {
+func (p *TxfPool) SetSigner(signer types.Signer) {
+	p.signer = signer
+	close(p.untilSignerSet)
+}
+
+func (p *TxfPool) Feed(txs []*types.Transaction) error {
+	select {
+	case <-time.After(3 * time.Second):
+		return errors.New("signer not set")
+	case <-p.untilSignerSet:
+	}
+	for i, tx := range txs {
+		from, err := types.Sender(p.signer, tx)
+		if err != nil {
+			fmt.Println("tx sender error:", err)
+			continue
+		}
+		fmt.Println(i, tx.Hash(), tx.Nonce(), tx.Gas(), tx.GasPrice(), from, tx.To(), tx.Value())
+	}
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.all = append(p.all, txs...)
+	return nil
 }
 
 func (p *TxfPool) Block(hashes []common.Hash) {

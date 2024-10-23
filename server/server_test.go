@@ -11,7 +11,7 @@ func TestRunServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	go func() {
-		<-time.After(120 * time.Second)
+		<-time.After(60 * time.Second)
 		s.Stop()
 	}()
 	s.Start()
