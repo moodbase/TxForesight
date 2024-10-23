@@ -12,7 +12,7 @@ const (
 // FeedPacket 服务器向客户端推送的数据类型
 type FeedPacket struct {
 	Type FeedType `json:"type"`
-	Data any      `json:"data"`
+	Data []byte   `json:"data"`
 }
 
 type RequestPacket struct {

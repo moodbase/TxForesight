@@ -22,21 +22,25 @@ func New(addr string) (*Client, error) {
 	return &Client{conn}, nil
 }
 
-// DrainLoop take packets from conn
-func (c *Client) DrainLoop() {
+func (c *Client) Close() {
+	c.conn.Close()
+}
+
+// DrainLoop relay packets from conn
+func (c *Client) DrainLoop(ch chan<- *mps.FeedPacket) {
 	for {
-		var data any
-		err := c.conn.ReadJSON(&data)
+		var packet mps.FeedPacket
+		err := c.conn.ReadJSON(&packet)
 		if err != nil {
 			if !websocket.IsCloseError(err) {
 				fmt.Println(err)
 			} else {
 				fmt.Println("conn close")
+				c.conn.Close()
 			}
-			c.conn.Close()
 			return
 		}
-		fmt.Println(data)
+		ch <- &packet
 	}
 }
 

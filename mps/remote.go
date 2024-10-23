@@ -1,6 +1,7 @@
 package mps
 
 import (
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -61,33 +62,37 @@ func (r *Remote) feed(packet FeedPacket) chan error {
 }
 
 func (r *Remote) FeedChainConfig(config *params.ChainConfig) error {
+	data, _ := json.Marshal(config)
 	return <-r.feed(FeedPacket{
 		Type: FeedTypeChainConfig,
-		Data: config,
+		Data: data,
 	})
 }
 
 // FeedResponse respond to client requests
 func (r *Remote) FeedResponse(id int, ok bool, msg string) error {
+	data, _ := json.Marshal(ResponsePacket{id, ok, msg})
 	return <-r.feed(FeedPacket{
 		Type: FeedTypeResponse,
-		Data: ResponsePacket{id, ok, msg},
+		Data: data,
 	})
 }
 
 // FeedNewTx relay new tx event to clients
 func (r *Remote) FeedNewTx(txs types.Transactions) error {
+	data, _ := json.Marshal(txs)
 	return <-r.feed(FeedPacket{
 		Type: FeedTypeTransactions,
-		Data: txs,
+		Data: data,
 	})
 }
 
 // FeedBlockedTxHash relay new blocked tx hash to clients
 func (r *Remote) FeedBlockedTxHash(hashes []common.Hash) error {
+	data, _ := json.Marshal(hashes)
 	return <-r.feed(FeedPacket{
 		Type: FeedTypeBlockedTxHashes,
-		Data: hashes,
+		Data: data,
 	})
 }
 
