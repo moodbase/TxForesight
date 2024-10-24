@@ -21,7 +21,7 @@ type ETHPool interface {
 	//Pending() []*types.Transaction
 	//Queuing() []*types.Transaction
 
-	All() []*types.Transaction
+	All(page, pageSize int) (selected []*types.Transaction, total int)
 }
 
 type TxfETHPool struct {
@@ -33,7 +33,7 @@ type TxfETHPool struct {
 	//queuing []*types.Transaction
 }
 
-func New() *TxfETHPool {
+func NewTxfETHPool() *TxfETHPool {
 	return &TxfETHPool{
 		all:            make([]*types.Transaction, 0, 256),
 		untilSignerSet: make(chan struct{}),
@@ -80,10 +80,31 @@ func (p *TxfETHPool) Block(hashes []common.Hash) {
 	fmt.Printf("new block(%d txs) rm %d tx from pool, left:%d \n", len(hashes), offset, len(p.all))
 }
 
-func (p *TxfETHPool) All() []*types.Transaction {
+func pageInfo(page, pageSize, total int) (start, end int) {
+	if page < 1 {
+		page = 1
+	}
+	start = (page - 1) * pageSize
+	if start > total {
+		start = total
+		return start, start
+	}
+	end = page * pageSize
+	if end > total {
+		end = total
+	}
+	return start, end
+}
+
+func (p *TxfETHPool) All(page, pageSize int) (selected []*types.Transaction, total int) {
+	total = len(p.all)
+	start, end := pageInfo(page, pageSize, total)
+	if start == end {
+		return make([]*types.Transaction, 0), total
+	}
 	p.lock.RLock()
-	defer p.lock.RUnlock()
-	all := make([]*types.Transaction, len(p.all))
-	copy(all, p.all)
-	return all
+	selected = make([]*types.Transaction, end-start)
+	copy(selected, p.all)
+	p.lock.RUnlock()
+	return selected, total
 }
