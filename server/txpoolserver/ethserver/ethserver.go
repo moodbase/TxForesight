@@ -3,13 +3,13 @@ package ethserver
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/moodbase/TxForesight/log/fmtlog"
 	"github.com/moodbase/TxForesight/mps"
 	"github.com/moodbase/TxForesight/mps/mpsclient"
 	"github.com/moodbase/TxForesight/txfpool"
@@ -71,48 +71,47 @@ func (s *ETHServer) packetLoop() {
 			case mps.FeedTypeChainConfig:
 				err := json.Unmarshal(packet.Data, &s.chainConfig)
 				if err != nil {
-					fmtlog.Info("err", err)
-					fmtlog.Info("invalid chain config", packet.Data)
+					slog.Error("invalid chain config", "err", err, "data", packet.Data)
 				} else {
-					fmtlog.Info("received chain config:", s.chainConfig)
+					slog.Info("received chain config", "config", s.chainConfig)
 				}
 				s.pool.SetSigner(types.LatestSigner(s.chainConfig))
 			case mps.FeedTypeTransactions:
 				var txs types.Transactions
 				err := json.Unmarshal(packet.Data, &txs)
 				if err != nil {
-					fmtlog.Info("invalid transactions", packet.Data)
+					slog.Error("invalid transactions", "err", err, "data", packet.Data)
 				} else {
-					fmtlog.Info("received transactions:", txs)
+					slog.Info("received transactions", "len", len(txs))
 				}
 				err = s.pool.Feed(txs)
 				if err != nil {
-					fmtlog.Info("feed txs error", err)
-					fmtlog.Info("retry feed txs")
+					slog.Error("feed txs failed", "err", err)
+					slog.Info("retry feed txs")
 					s.feedCh <- packet
 				}
 			case mps.FeedTypeBlockedTxHashes:
 				var hashes []common.Hash
 				err := json.Unmarshal(packet.Data, &hashes)
 				if err != nil {
-					fmtlog.Info("invalid blocked tx hashes", packet.Data)
+					slog.Error("invalid blocked tx hashes", "err", err, "data", packet.Data)
 				} else {
-					fmtlog.Info("received blocked tx hashes:", hashes)
+					slog.Info("received blocked tx hashes:", "len", hashes)
 				}
 				s.pool.Block(hashes)
 			case mps.FeedTypeResponse:
 				var resp mps.ResponsePacket
 				err := json.Unmarshal(packet.Data, &resp)
 				if err != nil {
-					fmtlog.Info("invalid response", packet.Data)
+					slog.Info("invalid response", "err", err, "data", packet.Data)
 				} else {
-					fmtlog.Info("received response:", resp)
+					slog.Info("received response:", "resp", resp)
 				}
 			default:
-				fmtlog.Info("unknown packet type", packet.Type, packet.Data)
+				slog.Info("unknown packet type", "type", packet.Type, "data", packet.Data)
 			}
 		case <-s.ctx.Done():
-			fmtlog.Info("packet handle loop exit")
+			slog.Info("packet handle loop exit")
 			return
 		}
 	}
