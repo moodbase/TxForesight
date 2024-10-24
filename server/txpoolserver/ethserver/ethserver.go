@@ -1,4 +1,4 @@
-package server
+package ethserver
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type ETHServer struct {
 	pool        txfpool.ETHPool
 }
 
-func New(ethEndpoint, mpsEndpoint string) (*ETHServer, error) {
+func New(ethEndpoint, mpsEndpoint string, pool txfpool.ETHPool) (*ETHServer, error) {
 	ethCli, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,6 @@ func New(ethEndpoint, mpsEndpoint string) (*ETHServer, error) {
 	mpsCli.SubscribeTopicNewTx()
 	mpsCli.SubscribeTopicBlockedTxHashes()
 	ctx, cancel := context.WithCancel(context.Background())
-	pool := txfpool.New()
 
 	return &ETHServer{
 		ethCli: ethCli,
@@ -55,7 +54,7 @@ func New(ethEndpoint, mpsEndpoint string) (*ETHServer, error) {
 
 func (s *ETHServer) Start() {
 	go s.mpsCli.DrainLoop(s.feedCh)
-	s.PacketLoop()
+	s.packetLoop()
 }
 
 func (s *ETHServer) Stop() {
@@ -64,7 +63,7 @@ func (s *ETHServer) Stop() {
 	s.ethCli.Close()
 }
 
-func (s *ETHServer) PacketLoop() {
+func (s *ETHServer) packetLoop() {
 	for {
 		select {
 		case packet := <-s.feedCh:
