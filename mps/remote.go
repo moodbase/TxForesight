@@ -127,11 +127,14 @@ func (r *Remote) RecvLoop() error {
 		var req RequestPacket
 		err := r.c.ReadJSON(&req)
 		if err != nil {
-			r.logger.Error("ws Request decode", "err", err, "remote", r.c.RemoteAddr())
-			err = r.FeedResponse(-1, false, err.Error())
-			if err != nil {
+			r.logger.Warn("ws Request decode", "err", err, "remote", r.c.RemoteAddr())
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
 				return err
 			}
+			if err := r.FeedResponse(-1, false, err.Error()); err != nil {
+				return err
+			}
+			return err
 		}
 		switch req.Op {
 		case ClientOptSubscribe:
