@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Pool interface {
+type ETHPool interface {
 	SetSigner(signer types.Signer)
 
 	Feed(txs []*types.Transaction) error
@@ -24,7 +24,7 @@ type Pool interface {
 	All() []*types.Transaction
 }
 
-type TxfPool struct {
+type TxfETHPool struct {
 	lock           sync.RWMutex
 	all            []*types.Transaction
 	signer         types.Signer
@@ -33,19 +33,19 @@ type TxfPool struct {
 	//queuing []*types.Transaction
 }
 
-func New() *TxfPool {
-	return &TxfPool{
+func New() *TxfETHPool {
+	return &TxfETHPool{
 		all:            make([]*types.Transaction, 0, 256),
 		untilSignerSet: make(chan struct{}),
 	}
 }
 
-func (p *TxfPool) SetSigner(signer types.Signer) {
+func (p *TxfETHPool) SetSigner(signer types.Signer) {
 	p.signer = signer
 	close(p.untilSignerSet)
 }
 
-func (p *TxfPool) Feed(txs []*types.Transaction) error {
+func (p *TxfETHPool) Feed(txs []*types.Transaction) error {
 	select {
 	case <-time.After(3 * time.Second):
 		return errors.New("signer not set")
@@ -65,7 +65,7 @@ func (p *TxfPool) Feed(txs []*types.Transaction) error {
 	return nil
 }
 
-func (p *TxfPool) Block(hashes []common.Hash) {
+func (p *TxfETHPool) Block(hashes []common.Hash) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	lenPool := len(p.all)
@@ -80,7 +80,7 @@ func (p *TxfPool) Block(hashes []common.Hash) {
 	fmt.Printf("new block(%d txs) rm %d tx from pool, left:%d \n", len(hashes), offset, len(p.all))
 }
 
-func (p *TxfPool) All() []*types.Transaction {
+func (p *TxfETHPool) All() []*types.Transaction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	all := make([]*types.Transaction, len(p.all))

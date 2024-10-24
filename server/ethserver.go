@@ -15,7 +15,7 @@ import (
 	"github.com/moodbase/TxForesight/txfpool"
 )
 
-type Server struct {
+type ETHServer struct {
 	ethCli *ethclient.Client
 	mpsCli *mpsclient.Client
 
@@ -24,10 +24,10 @@ type Server struct {
 	feedCh chan *mps.FeedPacket
 
 	chainConfig *params.ChainConfig
-	pool        txfpool.Pool
+	pool        txfpool.ETHPool
 }
 
-func New(ethEndpoint, mpsEndpoint string) (*Server, error) {
+func New(ethEndpoint, mpsEndpoint string) (*ETHServer, error) {
 	ethCli, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func New(ethEndpoint, mpsEndpoint string) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	pool := txfpool.New()
 
-	return &Server{
+	return &ETHServer{
 		ethCli: ethCli,
 		mpsCli: mpsCli,
 
@@ -53,18 +53,18 @@ func New(ethEndpoint, mpsEndpoint string) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) Start() {
+func (s *ETHServer) Start() {
 	go s.mpsCli.DrainLoop(s.feedCh)
 	s.PacketLoop()
 }
 
-func (s *Server) Stop() {
+func (s *ETHServer) Stop() {
 	s.cancel()
 	s.mpsCli.Close()
 	s.ethCli.Close()
 }
 
-func (s *Server) PacketLoop() {
+func (s *ETHServer) PacketLoop() {
 	for {
 		select {
 		case packet := <-s.feedCh:

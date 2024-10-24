@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestRunServer(t *testing.T) {
+func TestRunETHServer(t *testing.T) {
 	s, err := New("http://localhost:8545", "localhost:7856")
 	if err != nil {
 		t.Fatal(err)
