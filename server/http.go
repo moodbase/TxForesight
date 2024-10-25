@@ -17,7 +17,8 @@ type PageInfo struct {
 
 func (s *Server) routeETH(tag ChainTag) {
 	// GET /{tag}
-	s.r.GET(string(tag), func(ctx *gin.Context) {
+	g := s.r.Group(string(tag))
+	g.GET("/tx-pool", func(ctx *gin.Context) {
 		var pageInfo PageInfo
 		err := ctx.ShouldBind(&pageInfo)
 		if err != nil {
@@ -33,6 +34,10 @@ func (s *Server) routeETH(tag ChainTag) {
 			"selected": selected,
 			"total":    total,
 		})
+	})
+	g.GET("/chain-config", func(ctx *gin.Context) {
+		config := s.ethPoolServers[tag].ChainConfig()
+		ctx.Data(http.StatusOK, "application/json", config)
 	})
 }
 

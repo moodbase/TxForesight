@@ -60,6 +60,10 @@ func (s *ETHServer) Stop() {
 	s.ethCli.Close()
 }
 
+func (s *ETHServer) ChainConfig() []byte {
+	return s.chainConfigJsonData
+}
+
 func (s *ETHServer) packetLoop() {
 	for {
 		select {
