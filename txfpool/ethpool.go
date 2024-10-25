@@ -1,11 +1,13 @@
 package txfpool
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/moodbase/TxForesight/mps"
 	"log/slog"
 	"math/big"
+	"slices"
 	"sync"
 )
 
@@ -19,6 +21,22 @@ type ETHPoolTx struct {
 	From     *common.Address    `json:"from"`
 	To       *common.Address    `json:"to"`
 	Value    *big.Int           `json:"value"`
+}
+
+func (tx *ETHPoolTx) String() string {
+	from := "_"
+	if tx.From != nil {
+		from = tx.From.String()
+	}
+	to := "_"
+	if tx.To != nil {
+		to = tx.To.String()
+	}
+	var value int64 = 0
+	if tx.Value != nil {
+		value = tx.Value.Int64()
+	}
+	return fmt.Sprintf("tx: nonce=%d from=%s value=%d to=%s", tx.Nonce, from, value, to)
 }
 
 type ETHPool interface {
@@ -64,6 +82,8 @@ func (p *TxfETHPool) Feed(txsWithSender *mps.TxsWithSender) {
 	}
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	// NOTE: the time of transactions is not guaranteed to be in order
+	// we may sort it when necessary
 	p.all = append(p.all, txs...)
 }
 
@@ -111,7 +131,11 @@ func (p *TxfETHPool) All(page, pageSize int) (selected []*ETHPoolTx, total int) 
 	}
 	p.lock.RLock()
 	selected = make([]*ETHPoolTx, end-start)
-	copy(selected, p.all)
+	// respond latest transactions first
+	// the order of transactions is assumed to be in the order of timestamp,
+	// so we simply selected from tail to head and reverse it
+	copy(selected, p.all[total-end:total-start])
 	p.lock.RUnlock()
+	slices.Reverse(selected)
 	return selected, total
 }

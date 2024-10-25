@@ -1,6 +1,7 @@
 package txfpool
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -26,5 +27,31 @@ func TestPageInfo(t *testing.T) {
 		if start != test.start || end != test.end {
 			t.Errorf("test %d: pageInfo(%d, %d, %d) = %d, %d, want %d, %d", i, test.page, test.pageSize, total, start, end, test.start, test.end)
 		}
+	}
+}
+
+func TestTxfETHPool_All(t *testing.T) {
+	p := NewTxfETHPool()
+	p.all = []*ETHPoolTx{
+		{Nonce: 1},
+		{Nonce: 2},
+		{Nonce: 3},
+		{Nonce: 4},
+		{Nonce: 5},
+	}
+	pages := []struct {
+		page     int
+		pageSize int
+	}{
+		{-1, 2},
+		{1, 10},
+		{1, 2},
+		{2, 2},
+		{3, 2},
+	}
+	for _, page := range pages {
+		selected, total := p.All(page.page, page.pageSize)
+		fmt.Println(page.page, page.pageSize)
+		fmt.Println(selected, total)
 	}
 }
