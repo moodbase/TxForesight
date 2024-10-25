@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/gorilla/websocket"
 	"github.com/moodbase/TxForesight/log"
@@ -21,14 +22,16 @@ type wsServer struct {
 
 	logger log.Logger
 
-	chainConfig params.ChainConfig
+	chainConfig *params.ChainConfig
+	signer      types.Signer
 }
 
 func newWS(addr string, logger log.Logger, chainConfig *params.ChainConfig) *wsServer {
 	w := &wsServer{
 		conns:       make(map[string]*Remote),
 		logger:      logger,
-		chainConfig: *chainConfig,
+		chainConfig: chainConfig,
+		signer:      types.LatestSigner(chainConfig),
 	}
 	srv := &http.Server{
 		Addr:    addr,
@@ -41,11 +44,20 @@ func newWS(addr string, logger log.Logger, chainConfig *params.ChainConfig) *wsS
 func (s *wsServer) DispatchNewTxsEvent(e core.NewTxsEvent) {
 	s.connLock.RLock()
 	defer s.connLock.RUnlock()
+	senders := make([]*common.Address, len(e.Txs))
+	for i, tx := range e.Txs {
+		from, err := types.Sender(s.signer, tx)
+		if err != nil {
+			s.logger.Error("tx sender parse error:", err)
+			continue
+		}
+		senders[i] = &from
+	}
 	for addr, conn := range s.conns {
 		if !conn.subscribed[TopicNewTx] {
 			continue
 		}
-		err := conn.FeedNewTx(e.Txs)
+		err := conn.FeedNewTx(TxsWithSender{e.Txs, senders})
 		if err != nil {
 			s.logger.Error(err.Error(), "addr", addr)
 		}
@@ -86,7 +98,7 @@ func (s *wsServer) AddConn(r *Remote) {
 	s.conns[r.c.RemoteAddr().String()] = r
 
 	go func() {
-		err := r.Serve(&s.chainConfig)
+		err := r.Serve(s.chainConfig)
 		if err != nil {
 			if !errors.Is(err, ErrConnClosed) {
 				s.RemoveConn(r, false)

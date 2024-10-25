@@ -6,10 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
-
 	"github.com/moodbase/TxForesight/mps"
 	"github.com/moodbase/TxForesight/mps/mpsclient"
 	"github.com/moodbase/TxForesight/txfpool"
@@ -23,8 +20,8 @@ type ETHServer struct {
 	cancel context.CancelFunc
 	feedCh chan *mps.FeedPacket
 
-	chainConfig *params.ChainConfig
-	pool        txfpool.ETHPool
+	chainConfigJsonData []byte
+	pool                txfpool.ETHPool
 }
 
 func New(ethEndpoint, mpsEndpoint string, pool txfpool.ETHPool) (*ETHServer, error) {
@@ -69,34 +66,24 @@ func (s *ETHServer) packetLoop() {
 		case packet := <-s.feedCh:
 			switch packet.Type {
 			case mps.FeedTypeChainConfig:
-				err := json.Unmarshal(packet.Data, &s.chainConfig)
-				if err != nil {
-					slog.Error("invalid chain config", "err", err, "data", packet.Data)
-				} else {
-					slog.Info("received chain config", "config", s.chainConfig)
-				}
-				s.pool.SetSigner(types.LatestSigner(s.chainConfig))
+				s.chainConfigJsonData = packet.Data
+				slog.Info("received chain config json data", "data[unverified]", string(s.chainConfigJsonData))
 			case mps.FeedTypeTransactions:
-				var txs types.Transactions
-				err := json.Unmarshal(packet.Data, &txs)
+				var txsWithSender mps.TxsWithSender
+				err := json.Unmarshal(packet.Data, &txsWithSender)
 				if err != nil {
 					slog.Error("invalid transactions", "err", err, "data", packet.Data)
 				} else {
-					slog.Info("received transactions", "len", len(txs))
+					slog.Info("received transactions", "len", len(txsWithSender.Txs))
 				}
-				err = s.pool.Feed(txs)
-				if err != nil {
-					slog.Error("feed txs failed", "err", err)
-					slog.Info("retry feed txs")
-					s.feedCh <- packet
-				}
+				s.pool.Feed(&txsWithSender)
 			case mps.FeedTypeBlockedTxHashes:
 				var hashes []common.Hash
 				err := json.Unmarshal(packet.Data, &hashes)
 				if err != nil {
 					slog.Error("invalid blocked tx hashes", "err", err, "data", packet.Data)
 				} else {
-					slog.Info("received blocked tx hashes:", "len", hashes)
+					slog.Info("received blocked tx hashes:", "len", len(hashes))
 				}
 				s.pool.Block(hashes)
 			case mps.FeedTypeResponse:

@@ -1,18 +1,28 @@
 package txfpool
 
 import (
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
+	"github.com/moodbase/TxForesight/mps"
+	"log/slog"
+	"math/big"
 	"sync"
-	"time"
 )
 
-type ETHPool interface {
-	SetSigner(signer types.Signer)
+type ETHPoolTx struct {
+	Raw      *types.Transaction `json:"raw"`
+	Hash     common.Hash        `json:"hash"`
+	Nonce    uint64             `json:"nonce"`
+	UnixTime int64              `json:"unixTime"`
+	Gas      uint64             `json:"gas"`
+	GasPrice *big.Int           `json:"gasPrice"`
+	From     *common.Address    `json:"from"`
+	To       *common.Address    `json:"to"`
+	Value    *big.Int           `json:"value"`
+}
 
-	Feed(txs []*types.Transaction) error
+type ETHPool interface {
+	Feed(txs *mps.TxsWithSender)
 	Block(hashes []common.Hash)
 
 	//Pend(hashes []common.Hash)
@@ -21,63 +31,60 @@ type ETHPool interface {
 	//Pending() []*types.Transaction
 	//Queuing() []*types.Transaction
 
-	All(page, pageSize int) (selected []*types.Transaction, total int)
+	All(page, pageSize int) (selected []*ETHPoolTx, total int)
 }
 
 type TxfETHPool struct {
-	lock           sync.RWMutex
-	all            []*types.Transaction
-	signer         types.Signer
-	untilSignerSet chan struct{}
+	lock sync.RWMutex
+	all  []*ETHPoolTx
 	//pending []*types.Transaction
 	//queuing []*types.Transaction
 }
 
 func NewTxfETHPool() *TxfETHPool {
 	return &TxfETHPool{
-		all:            make([]*types.Transaction, 0, 256),
-		untilSignerSet: make(chan struct{}),
+		all: make([]*ETHPoolTx, 0, 256),
 	}
 }
 
-func (p *TxfETHPool) SetSigner(signer types.Signer) {
-	p.signer = signer
-	close(p.untilSignerSet)
-}
-
-func (p *TxfETHPool) Feed(txs []*types.Transaction) error {
-	select {
-	case <-time.After(3 * time.Second):
-		return errors.New("signer not set")
-	case <-p.untilSignerSet:
-	}
-	for i, tx := range txs {
-		from, err := types.Sender(p.signer, tx)
-		if err != nil {
-			fmt.Println("tx sender error:", err)
-			continue
+func (p *TxfETHPool) Feed(txsWithSender *mps.TxsWithSender) {
+	txs := make([]*ETHPoolTx, len(txsWithSender.Txs))
+	for i, tx := range txsWithSender.Txs {
+		txs[i] = &ETHPoolTx{
+			Raw:      tx,
+			Hash:     tx.Hash(),
+			Nonce:    tx.Nonce(),
+			UnixTime: tx.Time().Unix(),
+			Gas:      tx.Gas(),
+			GasPrice: tx.GasPrice(),
+			From:     txsWithSender.Senders[i],
+			To:       tx.To(),
+			Value:    tx.Value(),
 		}
-		fmt.Println(i, tx.Hash(), tx.Nonce(), tx.Gas(), tx.GasPrice(), from, tx.To(), tx.Value())
 	}
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.all = append(p.all, txs...)
-	return nil
 }
 
 func (p *TxfETHPool) Block(hashes []common.Hash) {
+	toRm := make(map[common.Hash]bool, len(hashes))
+	for _, hash := range hashes {
+		toRm[hash] = true
+	}
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	lenPool := len(p.all)
 	offset := 0
 	for i := 0; i < lenPool; i++ {
 		p.all[i-offset] = p.all[i]
-		if p.all[i].Hash() == hashes[i] {
+		if toRm[p.all[i].Hash] {
 			offset++
 		}
 	}
 	p.all = p.all[:len(p.all)-offset]
-	fmt.Printf("new block(%d txs) rm %d tx from pool, left:%d \n", len(hashes), offset, len(p.all))
+	slog.Info("new block rm transactions from pool", "size", lenPool, "removed", offset, "remain", len(p.all))
 }
 
 func pageInfo(page, pageSize, total int) (start, end int) {
@@ -96,14 +103,14 @@ func pageInfo(page, pageSize, total int) (start, end int) {
 	return start, end
 }
 
-func (p *TxfETHPool) All(page, pageSize int) (selected []*types.Transaction, total int) {
+func (p *TxfETHPool) All(page, pageSize int) (selected []*ETHPoolTx, total int) {
 	total = len(p.all)
 	start, end := pageInfo(page, pageSize, total)
 	if start == end {
-		return make([]*types.Transaction, 0), total
+		return make([]*ETHPoolTx, 0), total
 	}
 	p.lock.RLock()
-	selected = make([]*types.Transaction, end-start)
+	selected = make([]*ETHPoolTx, end-start)
 	copy(selected, p.all)
 	p.lock.RUnlock()
 	return selected, total

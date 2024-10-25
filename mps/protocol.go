@@ -1,5 +1,10 @@
 package mps
 
+import (
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+)
+
 type FeedType int
 
 const (
@@ -9,7 +14,14 @@ const (
 	FeedTypeResponse // response to client subscription requests
 )
 
-// FeedPacket 服务器向客户端推送的数据类型
+// TxsWithSender is a wrapper of transactions and their senders,
+// used to send txs packet to mps client
+type TxsWithSender struct {
+	Txs     types.Transactions `json:"txs"`
+	Senders []*common.Address  `json:"senders"`
+}
+
+// FeedPacket is the packet sent to mps client
 type FeedPacket struct {
 	Type FeedType `json:"type"`
 	Data []byte   `json:"data"`

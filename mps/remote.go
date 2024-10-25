@@ -3,7 +3,6 @@ package mps
 import (
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/gorilla/websocket"
 	"github.com/moodbase/TxForesight/log"
@@ -79,8 +78,8 @@ func (r *Remote) FeedResponse(id int, ok bool, msg string) error {
 }
 
 // FeedNewTx relay new tx event to clients
-func (r *Remote) FeedNewTx(txs types.Transactions) error {
-	data, _ := json.Marshal(txs)
+func (r *Remote) FeedNewTx(txsWithSender TxsWithSender) error {
+	data, _ := json.Marshal(txsWithSender)
 	return <-r.feed(FeedPacket{
 		Type: FeedTypeTransactions,
 		Data: data,
