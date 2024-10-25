@@ -45,11 +45,9 @@ func New(listenAddr string) *Server {
 
 func (s *Server) Start() error {
 	for tag, server := range s.ethPoolServers {
-		go func() {
-			server.Start()
-			slog.Info("started eth txPool server", "chain", tag)
-			s.wg.Add(1)
-		}()
+		slog.Info("start eth txPool server", "chain", tag)
+		go server.Start()
+		s.wg.Add(1)
 	}
 	if len(s.ethPoolServers) == 0 {
 		return errors.New("no txPool server registered")
