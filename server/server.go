@@ -2,13 +2,14 @@ package server
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/moodbase/TxForesight/txfpool/ethpool"
 	"log/slog"
 	"net/http"
 	"sync"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/moodbase/TxForesight/server/txpoolserver/ethserver"
+	"github.com/moodbase/TxForesight/txfpool/ethpool"
 )
 
 type ChainTag string

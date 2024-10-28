@@ -7,8 +7,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	"github.com/moodbase/TxForesight/client/mpsclient"
 	"github.com/moodbase/TxForesight/mps"
-	"github.com/moodbase/TxForesight/mps/mpsclient"
 	"github.com/moodbase/TxForesight/txfpool/ethpool"
 )
 
