@@ -3,12 +3,12 @@ package server
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/moodbase/TxForesight/txfpool/ethpool"
 	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/moodbase/TxForesight/server/txpoolserver/ethserver"
-	"github.com/moodbase/TxForesight/txfpool"
 )
 
 type ChainTag string
@@ -21,7 +21,7 @@ type Server struct {
 	r            *gin.Engine
 	httpListener *http.Server
 
-	ethPools       map[ChainTag]txfpool.ETHPool
+	ethPools       map[ChainTag]ethpool.Pool
 	ethPoolServers map[ChainTag]*ethserver.ETHServer
 
 	wg sync.WaitGroup
@@ -36,7 +36,7 @@ func New(listenAddr string) *Server {
 			Addr:    listenAddr,
 			Handler: r,
 		},
-		ethPools:       make(map[ChainTag]txfpool.ETHPool),
+		ethPools:       make(map[ChainTag]ethpool.Pool),
 		ethPoolServers: make(map[ChainTag]*ethserver.ETHServer),
 	}
 	s.Register()
@@ -69,7 +69,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) registerETHServer(tag ChainTag, rpcAddr, mpsAddr string) error {
-	pool := txfpool.NewTxfETHPool()
+	pool := ethpool.NewTxfPool()
 	ethServer, err := ethserver.New(rpcAddr, mpsAddr, pool)
 	if err != nil {
 		return err

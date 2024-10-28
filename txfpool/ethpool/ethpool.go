@@ -1,4 +1,4 @@
-package txfpool
+package ethpool
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-type ETHPoolTx struct {
+type PoolTx struct {
 	Raw      *types.Transaction `json:"raw"`
 	Hash     common.Hash        `json:"hash"`
 	Nonce    uint64             `json:"nonce"`
@@ -23,7 +23,7 @@ type ETHPoolTx struct {
 	Value    *big.Int           `json:"value"`
 }
 
-func (tx *ETHPoolTx) String() string {
+func (tx *PoolTx) String() string {
 	from := "_"
 	if tx.From != nil {
 		from = tx.From.String()
@@ -39,7 +39,7 @@ func (tx *ETHPoolTx) String() string {
 	return fmt.Sprintf("tx: nonce=%d from=%s value=%d to=%s", tx.Nonce, from, value, to)
 }
 
-type ETHPool interface {
+type Pool interface {
 	Feed(txs *mps.TxsWithSender)
 	Block(hashes []common.Hash)
 
@@ -49,26 +49,26 @@ type ETHPool interface {
 	//Pending() []*types.Transaction
 	//Queuing() []*types.Transaction
 
-	All(page, pageSize int) (selected []*ETHPoolTx, total int)
+	All(page, pageSize int) (selected []*PoolTx, total int)
 }
 
-type TxfETHPool struct {
+type TxfPool struct {
 	lock sync.RWMutex
-	all  []*ETHPoolTx
+	all  []*PoolTx
 	//pending []*types.Transaction
 	//queuing []*types.Transaction
 }
 
-func NewTxfETHPool() *TxfETHPool {
-	return &TxfETHPool{
-		all: make([]*ETHPoolTx, 0, 256),
+func NewTxfPool() *TxfPool {
+	return &TxfPool{
+		all: make([]*PoolTx, 0, 256),
 	}
 }
 
-func (p *TxfETHPool) Feed(txsWithSender *mps.TxsWithSender) {
-	txs := make([]*ETHPoolTx, len(txsWithSender.Txs))
+func (p *TxfPool) Feed(txsWithSender *mps.TxsWithSender) {
+	txs := make([]*PoolTx, len(txsWithSender.Txs))
 	for i, tx := range txsWithSender.Txs {
-		txs[i] = &ETHPoolTx{
+		txs[i] = &PoolTx{
 			Raw:      tx,
 			Hash:     tx.Hash(),
 			Nonce:    tx.Nonce(),
@@ -87,7 +87,7 @@ func (p *TxfETHPool) Feed(txsWithSender *mps.TxsWithSender) {
 	p.all = append(p.all, txs...)
 }
 
-func (p *TxfETHPool) Block(hashes []common.Hash) {
+func (p *TxfPool) Block(hashes []common.Hash) {
 	toRm := make(map[common.Hash]bool, len(hashes))
 	for _, hash := range hashes {
 		toRm[hash] = true
@@ -123,14 +123,14 @@ func pageInfo(page, pageSize, total int) (start, end int) {
 	return start, end
 }
 
-func (p *TxfETHPool) All(page, pageSize int) (selected []*ETHPoolTx, total int) {
+func (p *TxfPool) All(page, pageSize int) (selected []*PoolTx, total int) {
 	total = len(p.all)
 	start, end := pageInfo(page, pageSize, total)
 	if start == end {
-		return make([]*ETHPoolTx, 0), total
+		return make([]*PoolTx, 0), total
 	}
 	p.lock.RLock()
-	selected = make([]*ETHPoolTx, end-start)
+	selected = make([]*PoolTx, end-start)
 	// respond latest transactions first
 	// the order of transactions is assumed to be in the order of timestamp,
 	// so we simply selected from tail to head and reverse it

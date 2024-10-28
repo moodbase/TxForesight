@@ -1,4 +1,4 @@
-package txfpool
+package ethpool
 
 import (
 	"fmt"
@@ -31,8 +31,8 @@ func TestPageInfo(t *testing.T) {
 }
 
 func TestTxfETHPool_All(t *testing.T) {
-	p := NewTxfETHPool()
-	p.all = []*ETHPoolTx{
+	p := NewTxfPool()
+	p.all = []*PoolTx{
 		{Nonce: 1},
 		{Nonce: 2},
 		{Nonce: 3},

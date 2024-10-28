@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/moodbase/TxForesight/mps"
 	"github.com/moodbase/TxForesight/mps/mpsclient"
-	"github.com/moodbase/TxForesight/txfpool"
+	"github.com/moodbase/TxForesight/txfpool/ethpool"
 )
 
 type ETHServer struct {
@@ -21,10 +21,10 @@ type ETHServer struct {
 	feedCh chan *mps.FeedPacket
 
 	chainConfigJsonData []byte
-	pool                txfpool.ETHPool
+	pool                ethpool.Pool
 }
 
-func New(ethEndpoint, mpsEndpoint string, pool txfpool.ETHPool) (*ETHServer, error) {
+func New(ethEndpoint, mpsEndpoint string, pool ethpool.Pool) (*ETHServer, error) {
 	ethCli, err := ethclient.Dial(ethEndpoint)
 	if err != nil {
 		return nil, err
