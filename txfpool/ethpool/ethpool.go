@@ -2,13 +2,15 @@ package ethpool
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/moodbase/TxForesight/mps"
 	"log/slog"
 	"math/big"
 	"slices"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/moodbase/TxForesight/mps"
 )
 
 type PoolTx struct {
@@ -50,10 +52,12 @@ type Pool interface {
 	//Queuing() []*types.Transaction
 
 	All(page, pageSize int) (selected []*PoolTx, total int)
+	Get(hash common.Hash) (*PoolTx, bool)
 }
 
 type TxfPool struct {
 	lock sync.RWMutex
+	m    map[common.Hash]*PoolTx
 	all  []*PoolTx
 	//pending []*types.Transaction
 	//queuing []*types.Transaction
@@ -62,6 +66,7 @@ type TxfPool struct {
 func NewTxfPool() *TxfPool {
 	return &TxfPool{
 		all: make([]*PoolTx, 0, 256),
+		m:   make(map[common.Hash]*PoolTx, 256),
 	}
 }
 
@@ -85,16 +90,19 @@ func (p *TxfPool) Feed(txsWithSender *mps.TxsWithSender) {
 	// NOTE: the time of transactions is not guaranteed to be in order
 	// we may sort it when necessary
 	p.all = append(p.all, txs...)
+	for _, tx := range txs {
+		p.m[tx.Hash] = tx
+	}
 }
 
 func (p *TxfPool) Block(hashes []common.Hash) {
 	toRm := make(map[common.Hash]bool, len(hashes))
-	for _, hash := range hashes {
-		toRm[hash] = true
-	}
-
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	for _, hash := range hashes {
+		toRm[hash] = true
+		delete(p.m, hash)
+	}
 	lenPool := len(p.all)
 	offset := 0
 	for i := 0; i < lenPool; i++ {
@@ -138,4 +146,11 @@ func (p *TxfPool) All(page, pageSize int) (selected []*PoolTx, total int) {
 	p.lock.RUnlock()
 	slices.Reverse(selected)
 	return selected, total
+}
+
+func (p *TxfPool) Get(hash common.Hash) (*PoolTx, bool) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+	tx, ok := p.m[hash]
+	return tx, ok
 }

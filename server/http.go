@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 )
 
@@ -33,6 +34,22 @@ func (s *Server) routeETH(tag ChainTag) {
 		ctx.JSON(http.StatusOK, gin.H{
 			"selected": selected,
 			"total":    total,
+		})
+	})
+	g.GET("/tx-pool/:hash", func(ctx *gin.Context) {
+		hashStr := ctx.Param("hash")
+		pool := s.ethPools[tag]
+		var hash common.Hash
+		err := hash.UnmarshalText([]byte(hashStr))
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		tx, _ := pool.Get(hash)
+		ctx.JSON(http.StatusOK, gin.H{
+			hashStr: tx,
 		})
 	})
 	g.GET("/chain-config", func(ctx *gin.Context) {
